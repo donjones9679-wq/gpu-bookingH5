@@ -61,6 +61,8 @@
         .sync-dot { width: 8px; height: 8px; background: #00d4aa; border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         
+        .error-msg { background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); color: #ff6b6b; padding: 20px; border-radius: 8px; margin: 20px; }
+        
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .main { margin-left: 0; padding: 20px; }
@@ -139,6 +141,8 @@
                     </tbody>
                 </table>
             </div>
+            
+            <div id="error-container"></div>
         </div>
     </div>
 
@@ -148,20 +152,32 @@
     </div>
 
     <script>
-        // ==================== 配置：替换为你的 Supabase 信息 ====================
-        const SUPABASE_URL = 'https://你的项目ID.supabase.co';
-        const SUPABASE_KEY = '你的Anon Key';
+        // ==================== 配置区：替换这里！ ====================
+        const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co';  // ← 替换
+        const SUPABASE_KEY = 'ydyzjrkvmfpuqbsgbmxy';  // ← 替换
         
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+        let supabase;
         let allData = [];
+
+        // 初始化
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+            console.log('Supabase 初始化成功');
+        } catch (err) {
+            console.error('Supabase 初始化失败:', err);
+            showError('数据库连接失败，请检查配置');
+        }
+
+        function showError(msg) {
+            document.getElementById('error-container').innerHTML = 
+                '<div class="error-msg">错误: ' + msg + '</div>';
+        }
 
         function doLogin() {
             if (document.getElementById('pwd').value === 'lingxi2024') {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app').classList.add('show');
                 loadData();
-                // 自动刷新
                 setInterval(loadData, 5000);
             } else {
                 alert('密码错误');
@@ -169,20 +185,30 @@
         }
 
         async function loadData() {
-            const { data, error } = await supabase
-                .from('bookings')
-                .select('*')
-                .order('created_at', { ascending: false });
+            try {
+                console.log('正在加载数据...');
+                
+                const { data, error } = await supabase
+                    .from('bookings')
+                    .select('*')
+                    .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('加载失败:', error);
-                return;
+                if (error) {
+                    console.error('Supabase 错误:', error);
+                    showError('加载失败: ' + error.message);
+                    return;
+                }
+
+                console.log('加载成功，共', data?.length, '条记录');
+                allData = data || [];
+                renderTable();
+                updateStats();
+                document.getElementById('record-count').innerText = allData.length;
+                
+            } catch (err) {
+                console.error('加载异常:', err);
+                showError('加载异常: ' + err.message);
             }
-
-            allData = data || [];
-            renderTable();
-            updateStats();
-            document.getElementById('record-count').innerText = allData.length;
         }
 
         function renderTable(data = allData) {
@@ -196,7 +222,7 @@
                 const date = new Date(item.created_at).toLocaleString('zh-CN', { 
                     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                 });
-                const gpuClass = `tag-${item.gpu.toLowerCase()}`;
+                const gpuClass = `tag-${(item.gpu || 'other').toLowerCase()}`;
                 const urgencyTag = item.wait_time === 'immediate' 
                     ? '<span class="tag tag-urgent">急需</span>' 
                     : '<span class="tag tag-normal">一般</span>';
@@ -205,13 +231,13 @@
                     <tr>
                         <td>${date}</td>
                         <td>
-                            <div style="font-weight:500;">${item.name}</div>
-                            <div style="font-size:12px; color:#666;">${item.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}</div>
+                            <div style="font-weight:500;">${item.name || '未知'}</div>
+                            <div style="font-size:12px; color:#666;">${(item.phone || '').replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}</div>
                         </td>
-                        <td><span class="tag ${gpuClass}">${item.gpu}${item.gpu_other ? '*' : ''}</span></td>
+                        <td><span class="tag ${gpuClass}">${item.gpu || '未知'}${item.gpu_other ? '*' : ''}</span></td>
                         <td>${urgencyTag}</td>
                         <td><span style="font-size:12px; color:#666;">${item.user_ip || '-'}</span></td>
-                        <td><button class="action-btn" onclick="alert('电话：${item.phone}\\n邮箱：${item.email || '无'}\\n备注：${item.remark || '无'}')">查看</button></td>
+                        <td><button class="action-btn" onclick="viewDetail('${item.id}')">查看</button></td>
                     </tr>
                 `;
             }).join('');
@@ -239,16 +265,31 @@
         function searchTable(keyword) {
             if (!keyword) { renderTable(allData); return; }
             const filtered = allData.filter(d => 
-                d.name.includes(keyword) || d.phone.includes(keyword)
+                (d.name || '').includes(keyword) || 
+                (d.phone || '').includes(keyword)
             );
             renderTable(filtered);
+        }
+
+        function viewDetail(id) {
+            const item = allData.find(d => d.id === id);
+            if (!item) return;
+            
+            alert(`客户详情：
+姓名：${item.name}
+电话：${item.phone}
+邮箱：${item.email || '无'}
+显卡：${item.gpu} ${item.gpu_other || ''}
+等待时间：${item.wait_time}
+备注：${item.remark || '无'}
+IP：${item.user_ip || '-'}`);
         }
 
         function exportData() {
             const headers = ['提交时间', '姓名', '手机号', '邮箱', '显卡型号', '其他型号', '等待时间', '备注', 'IP地址'];
             const rows = allData.map(item => [
-                item.created_at, item.name, item.phone, item.email || '',
-                item.gpu, item.gpu_other || '', item.wait_time, item.remark || '', item.user_ip || ''
+                item.created_at, item.name || '', item.phone || '', item.email || '',
+                item.gpu || '', item.gpu_other || '', item.wait_time || '', item.remark || '', item.user_ip || ''
             ]);
             const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
             const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
