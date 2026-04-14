@@ -76,79 +76,109 @@
         </div>
     </div>
     <script>
-        // ==================== 配置：替换为你的 Supabase 信息 ====================
+ // ==================== 配置：替换为你的 Supabase 信息 ====================
         const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXpqcmt2bWZwdXFic2dibXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMzU2MzQsImV4cCI6MjA5MTcxMTYzNH0.xW3XVNJ02T-qhSUwDGOvnkqKPSPbGdE8TGjyywjopEQ'; // 使用 anon key，不是 publishable key
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXpqcmt2bWZwdXFic2dibXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMzU2MzQsImV4cCI6MjA5MTcxMTYzNH0.xW3XVNJ02T-qhSUwDGOvnkqKPSPbGdE8TGjyywjopEQ';
+        
+        // 调试日志函数
+        function addDebug(message) {
+            const debugDiv = document.getElementById('debugContent');
+            const time = new Date().toLocaleTimeString();
+            debugDiv.innerHTML += `[${time}] ${message}<br>`;
+            document.getElementById('debugInfo').style.display = 'block';
+            console.log(message);
+        }
+
         // 初始化 Supabase
         let supabase;
         try {
+            addDebug('🚀 开始初始化 Supabase...');
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('✅ Supabase 初始化成功');
+            addDebug('✅ Supabase 初始化成功');
         } catch (err) {
-            console.error('❌ Supabase 初始化失败:', err);
+            addDebug('❌ Supabase 初始化失败: ' + err.message);
             document.getElementById('tableBody').innerHTML = 
-                '<tr><td colspan="7" class="error">系统初始化失败，请检查配置</td></tr>';
+                '<tr><td colspan="7" class="error">系统初始化失败，请刷新页面重试</td></tr>';
         }
 
-        // 加载数据
+        // ==================== 核心：加载数据函数 ====================
         async function loadData() {
+            addDebug('📡 开始加载数据...');
+            
+            // 检查 supabase 是否初始化
+            if (!supabase) {
+                addDebug('❌ 错误：Supabase 未初始化');
+                document.getElementById('tableBody').innerHTML = 
+                    '<tr><td colspan="7" class="error">系统未初始化</td></tr>';
+                return;
+            }
+
             try {
-                // 1. 获取总预订数
-                const { count: totalCount, error: countError } = await supabase
-                    .from('bookings')
-                    .select('*', { count: 'exact', head: true });
+                // ========== 第 1 步：获取所有数据（最简单查询）==========
+                addDebug('📊 查询所有预订数据...');
                 
-                if (countError) throw countError;
-                document.getElementById('totalCount').textContent = totalCount || 0;
-
-                // 2. 获取今日新增
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                const { count: todayCount, error: todayError } = await supabase
-                    .from('bookings')
-                    .select('*', { count: 'exact', head: true })
-                    .gte('created_at', today.toISOString());
-                
-                if (todayError) throw todayError;
-                document.getElementById('todayCount').textContent = todayCount || 0;
-
-                // 3. 获取 RTX 5090 需求数
-                const { count: rtx5090Count, error: rtxError } = await supabase
-                    .from('bookings')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('gpu', 'rtx5090');
-                
-                if (rtxError) throw rtxError;
-                document.getElementById('rtx5090Count').textContent = rtx5090Count || 0;
-
-                // 4. 获取急需客户数（等待时长为 urgent）
-                const { count: urgentCount, error: urgentError } = await supabase
-                    .from('bookings')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('wait_time', 'urgent');
-                
-                if (urgentError) throw urgentError;
-                document.getElementById('urgentCount').textContent = urgentCount || 0;
-
-                // 5. 获取所有预订数据列表
                 const { data: bookings, error: dataError } = await supabase
                     .from('bookings')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (dataError) throw dataError;
+                addDebug('📥 查询返回数据条数: ' + (bookings ? bookings.length : 0));
+                
+                if (dataError) {
+                    addDebug('❌ 查询错误: ' + dataError.message);
+                    throw dataError;
+                }
 
-                // 渲染表格
+                // 显示原始数据（调试用）
+                if (bookings && bookings.length > 0) {
+                    addDebug('📝 第一条数据: ' + JSON.stringify(bookings[0]).substring(0, 100) + '...');
+                } else {
+                    addDebug('⚠️ 未查询到任何数据');
+                }
+
+                // ========== 第 2 步：获取统计数据 ==========
+                // 总预订数
+                const totalCount = bookings ? bookings.length : 0;
+                document.getElementById('totalCount').textContent = totalCount;
+                addDebug('📈 总预订数: ' + totalCount);
+
+                // 今日新增
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const todayCount = bookings ? bookings.filter(b => {
+                    const bookingDate = new Date(b.created_at);
+                    return bookingDate >= today;
+                }).length : 0;
+                document.getElementById('todayCount').textContent = todayCount;
+                addDebug('📅 今日新增: ' + todayCount);
+
+                // RTX 5090 需求（忽略大小写）
+                const rtx5090Count = bookings ? bookings.filter(b => {
+                    return b.gpu && b.gpu.toLowerCase().includes('5090');
+                }).length : 0;
+                document.getElementById('rtx5090Count').textContent = rtx5090Count;
+                addDebug('🎮 RTX 5090 需求: ' + rtx5090Count);
+
+                // 急需客户
+                const urgentCount = bookings ? bookings.filter(b => {
+                    return b.wait_time === 'urgent';
+                }).length : 0;
+                document.getElementById('urgentCount').textContent = urgentCount;
+                addDebug('🔥 急需客户: ' + urgentCount);
+
+                // ========== 第 3 步：渲染表格 ==========
                 renderTable(bookings || []);
+                addDebug('✅ 数据加载完成');
 
             } catch (err) {
-                console.error('加载数据失败:', err);
+                addDebug('💥 加载失败: ' + err.message);
+                console.error('完整错误:', err);
                 document.getElementById('tableBody').innerHTML = 
                     `<tr><td colspan="7" class="error">加载失败: ${err.message}</td></tr>`;
             }
         }
 
-        // 渲染表格
+        // ==================== 渲染表格函数 ====================
         function renderTable(bookings) {
             const tbody = document.getElementById('tableBody');
             
@@ -158,19 +188,29 @@
             }
 
             tbody.innerHTML = bookings.map(booking => {
-                const date = new Date(booking.created_at).toLocaleString('zh-CN');
+                // 格式化日期
+                const date = booking.created_at 
+                    ? new Date(booking.created_at).toLocaleString('zh-CN') 
+                    : '未知时间';
+
+                // 紧急度样式
                 const urgencyClass = booking.wait_time === 'urgent' ? 'urgency-high' : 
                                     booking.wait_time === 'month' ? 'urgency-normal' : 'urgency-low';
                 const urgencyText = booking.wait_time === 'urgent' ? '急需' : 
                                    booking.wait_time === 'month' ? '1月内' : '可等待';
-                
-                const gpuText = {
+
+                // 显卡型号显示
+                const gpuMap = {
                     'rtx5090': 'RTX 5090',
                     'rtx5080': 'RTX 5080',
                     'rtx4090': 'RTX 4090',
                     'rtx4080': 'RTX 4080',
-                    'other': booking.gpu_other || '其他'
-                }[booking.gpu] || booking.gpu;
+                    'RTX5090': 'RTX 5090',
+                    'RTX5080': 'RTX 5080',
+                    'RTX4090': 'RTX 4090',
+                    'RTX4080': 'RTX 4080'
+                };
+                const gpuText = gpuMap[booking.gpu] || booking.gpu || '未知型号';
 
                 return `
                     <tr>
@@ -178,6 +218,7 @@
                         <td>
                             <div>${booking.name || '未填写'}</div>
                             <div style="color: #888; font-size: 12px;">${booking.phone || ''}</div>
+                            <div style="color: #666; font-size: 11px;">${booking.email || ''}</div>
                         </td>
                         <td>${gpuText}</td>
                         <td class="${urgencyClass}">${urgencyText}</td>
@@ -193,11 +234,15 @@
 
         // 查看详情
         function viewDetail(id) {
-            alert('查看详情功能 - ID: ' + id);
+            alert('查看详情 - ID: ' + id);
         }
 
-        // 页面加载时自动获取数据
-        window.addEventListener('load', loadData);
+        // 页面加载完成后自动获取数据
+        window.addEventListener('load', () => {
+            addDebug('🌐 页面加载完成，准备获取数据...');
+            // 延迟 500ms 确保 Supabase 完全初始化
+            setTimeout(loadData, 500);
+        });
     </script>
 </body>
 </html>
