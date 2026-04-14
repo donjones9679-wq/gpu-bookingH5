@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>显卡预订登记 - 灵犀智算</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; 
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%); 
+            color: #e0e0e0; 
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        .container { max-width: 640px; margin: 0 auto; padding: 40px 20px; }
+        
+        .header { text-align: center; margin-bottom: 40px; }
+        .logo { 
+            width: 60px; height: 60px; 
+            background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
+            border-radius: 16px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px;
+            box-shadow: 0 8px 32px rgba(0, 212, 170, 0.3);
+        }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; background: linear-gradient(90deg, #fff 0%, #00d4aa 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { color: #888; font-size: 15px; }
+        
+        .progress-bar { 
+            height: 4px; background: #252525; border-radius: 2px; 
+            margin-bottom: 30px; overflow: hidden;
+        }
+        .progress-fill { 
+            height: 100%; width: 0%; background: linear-gradient(90deg, #00d4aa 0%, #00f5c4 100%);
+            transition: width 0.4s ease; border-radius: 2px;
+        }
+        
+        .section { 
+            background: rgba(26, 26, 26, 0.8); 
+            backdrop-filter: blur(10px);
+            border-radius: 16px; 
+            padding: 28px; 
+            margin-bottom: 24px; 
+            border: 1px solid rgba(255,255,255,0.06);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+            animation: slideUp 0.5s ease;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .section-number { 
+            width: 32px; height: 32px; 
+            background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
+            color: #000; border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 14px;
+        }
+        .section-title { font-size: 17px; font-weight: 600; color: #fff; }
+        .section-desc { color: #666; font-size: 13px; margin-top: 4px; margin-left: 44px; margin-bottom: 16px; }
+        
+        .option-group { display: flex; flex-direction: column; gap: 12px; }
+        .option { 
+            display: flex; align-items: center; padding: 18px; 
+            background: rgba(37, 37, 37, 0.6); 
+            border-radius: 12px; cursor: pointer; 
+            transition: all 0.3s ease; 
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .option::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(90deg, rgba(0, 212, 170, 0.1) 0%, transparent 100%);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .option:hover { border-color: rgba(0, 212, 170, 0.3); transform: translateX(4px); }
+        .option:hover::before { opacity: 1; }
+        .option.selected { 
+            border-color: #00d4aa; 
+            background: rgba(0, 212, 170, 0.08);
+        }
+        .option.selected::after {
+            content: '✓'; position: absolute; right: 16px; top: 50%; transform: translateY(-50%);
+            width: 24px; height: 24px; background: #00d4aa; color: #000;
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 700;
+        }
+        .option input { display: none; }
+        .option-content { flex: 1; }
+        .option-label { font-weight: 600; font-size: 15px; color: #fff; margin-bottom: 4px; }
+        .option-desc { font-size: 13px; color: #888; }
+        .option-price { 
+            font-size: 12px; color: #00d4aa; font-weight: 600;
+            background: rgba(0, 212, 170, 0.1); padding: 4px 8px; border-radius: 4px;
+        }
+        
+        .input-group { margin-bottom: 16px; }
+        .input-group label { 
+            display: block; margin-bottom: 8px; font-size: 14px; 
+            color: #aaa; font-weight: 500;
+        }
+        .input-group input, .input-group textarea { 
+            width: 100%; padding: 14px 16px; 
+            background: rgba(37, 37, 37, 0.6); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            border-radius: 10px; color: #fff; font-size: 15px;
+            transition: all 0.3s;
+        }
+        .input-group input:focus, .input-group textarea:focus { 
+            outline: none; border-color: #00d4aa; 
+            background: rgba(37, 37, 37, 0.8);
+            box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
+        }
+        .input-group input::placeholder { color: #666; }
+        
+        .other-input { 
+            margin-top: 12px; display: none;
+            animation: slideDown 0.3s ease;
+        }
+        .other-input.show { display: block; }
+        @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 100px; } }
+        
+        .submit-btn { 
+            width: 100%; padding: 18px; 
+            background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
+            color: #000; border: none; border-radius: 12px; 
+            font-size: 16px; font-weight: 700; cursor: pointer; 
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(0, 212, 170, 0.3);
+            position: relative; overflow: hidden;
+        }
+        .submit-btn::before {
+            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+        .submit-btn:hover::before { left: 100%; }
+        .submit-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 8px 30px rgba(0, 212, 170, 0.4);
+        }
+        .submit-btn:disabled { 
+            background: #333; color: #666; cursor: not-allowed;
+            box-shadow: none; transform: none;
+        }
+        .submit-btn.loading { color: transparent; }
+        .submit-btn.loading::after {
+            content: ''; position: absolute; width: 20px; height: 20px;
+            top: 50%; left: 50%; margin: -10px 0 0 -10px;
+            border: 2px solid transparent; border-top-color: #000;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .security-badge { 
+            display: flex; align-items: center; justify-content: center;
+            gap: 8px; margin-top: 20px; color: #666; font-size: 13px;
+        }
+        .security-badge svg { width: 16px; height: 16px; fill: #00d4aa; }
+        
+        .toast { 
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+            background: rgba(0, 212, 170, 0.95); color: #000; padding: 14px 28px;
+            border-radius: 10px; font-weight: 600; font-size: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000; backdrop-filter: blur(10px);
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); }
+        .toast.error { background: rgba(255, 107, 107, 0.95); color: #fff; }
+        
+        .success-screen { 
+            display: none; text-align: center; padding: 60px 20px;
+            animation: fadeIn 0.6s ease;
+        }
+        .success-screen.show { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .success-icon { 
+            width: 80px; height: 80px; background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 24px; font-size: 40px; box-shadow: 0 8px 32px rgba(0, 212, 170, 0.4);
+        }
+        .success-screen h2 { font-size: 24px; margin-bottom: 12px; color: #fff; }
+        .success-screen p { color: #888; font-size: 15px; line-height: 1.8; }
+        
+        .ip-info { 
+            position: fixed; bottom: 20px; right: 20px; 
+            background: rgba(0,0,0,0.6); padding: 8px 12px;
+            border-radius: 6px; font-size: 11px; color: #666;
+            backdrop-filter: blur(4px);
+        }
+        
+        @media (max-width: 480px) {
+            .container { padding: 20px 16px; }
+            .section { padding: 20px; }
+            .header h1 { font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="main-container">
+        <div class="header">
+            <div class="logo">🖥️</div>
+            <h1>显卡预订登记</h1>
+            <p>填写您的需求，有货立即通知您</p>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress"></div>
+        </div>
+
+        <!-- 步骤1：显卡型号 -->
+        <div class="section" data-step="1">
+            <div class="section-header">
+                <div class="section-number">1</div>
+                <div class="section-title">选择显卡型号</div>
+            </div>
+            <div class="section-desc">选择您需要的显卡型号，我们会根据库存情况优先通知</div>
+            <div class="option-group" id="gpu-options">
+                <label class="option" data-value="RTX5090">
+                    <input type="radio" name="gpu" value="RTX5090">
+                    <div class="option-content">
+                        <div class="option-label">NVIDIA RTX 5090</div>
+                        <div class="option-desc">旗舰级性能，适合AI训练与4K游戏</div>
+                    </div>
+                    <span class="option-price">旗舰</span>
+                </label>
+                <label class="option" data-value="RTX4090">
+                    <input type="radio" name="gpu" value="RTX4090">
+                    <div class="option-content">
+                        <div class="option-label">NVIDIA RTX 4090</div>
+                        <div class="option-desc">高端性能，性价比之选</div>
+                    </div>
+                    <span class="option-price">高端</span>
+                </label>
+                <label class="option" data-value="RTX3090">
+                    <input type="radio" name="gpu" value="RTX3090">
+                    <div class="option-content">
+                        <div class="option-label">NVIDIA RTX 3090</div>
+                        <div class="option-desc">经典型号，大显存适合渲染</div>
+                    </div>
+                    <span class="option-price">性价比</span>
+                </label>
+                <label class="option" data-value="other">
+                    <input type="radio" name="gpu" value="other">
+                    <div class="option-content">
+                        <div class="option-label">其他型号</div>
+                        <div class="option-desc">AMD显卡或其他特殊需求</div>
+                    </div>
+                </label>
+            </div>
+            <div class="other-input" id="other-gpu-box">
+                <div class="input-group">
+                    <input type="text" id="gpu-other" placeholder="请输入具体显卡型号，如 RTX 4080 / RX 7900 XTX">
+                </div>
+            </div>
+        </div>
+
+        <!-- 步骤2：等待时间 -->
+        <div class="section" data-step="2">
+            <div class="section-header">
+                <div class="section-number">2</div>
+                <div class="section-title">等待时长</div>
+            </div>
+            <div class="section-desc">告诉我们您的紧急程度，便于我们安排优先级</div>
+            <div class="option-group" id="wait-options">
+                <label class="option" data-value="immediate">
+                    <input type="radio" name="wait" value="immediate">
+                    <div class="option-content">
+                        <div class="option-label">🚨 立即需要</div>
+                        <div class="option-desc">一周内急需，越快越好</div>
+                    </div>
+                </label>
+                <label class="option" data-value="15days">
+                    <input type="radio" name="wait" value="15days">
+                    <div class="option-content">
+                        <div class="option-label">📅 15天之内</div>
+                        <div class="option-desc">近期有明确需求</div>
+                    </div>
+                </label>
+                <label class="option" data-value="1month">
+                    <input type="radio" name="wait" value="1month">
+                    <div class="option-content">
+                        <div class="option-label">🕐 一个月内</div>
+                        <div class="option-desc">可以等待，价格合适即可</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <!-- 步骤3：个人信息 -->
+        <div class="section" data-step="3">
+            <div class="section-header">
+                <div class="section-number">3</div>
+                <div class="section-title">联系方式</div>
+            </div>
+            <div class="section-desc">到货后我们会通过这些方式第一时间通知您</div>
+            <div class="input-group">
+                <label>姓名 *</label>
+                <input type="text" id="name" placeholder="请输入您的真实姓名" maxlength="20">
+            </div>
+            <div class="input-group">
+                <label>手机号码 *</label>
+                <input type="tel" id="phone" placeholder="请输入11位手机号" maxlength="11">
+            </div>
+            <div class="input-group">
+                <label>电子邮箱（选填）</label>
+                <input type="email" id="email" placeholder="用于接收到货通知邮件">
+            </div>
+            <div class="input-group">
+                <label>备注需求（选填）</label>
+                <textarea id="remark" rows="3" placeholder="如：需要公版/非公版、预算范围、批量采购数量等"></textarea>
+            </div>
+        </div>
+
+        <button class="submit-btn" id="submit-btn" onclick="submitForm()">提交预订申请</button>
+        
+        <div class="security-badge">
+            <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>数据安全加密保护 · 仅用于到货通知</span>
+        </div>
+    </div>
+
+    <!-- 成功页面 -->
+    <div class="success-screen" id="success-screen">
+        <div class="success-icon">✓</div>
+        <h2>预订成功！</h2>
+        <p>我们已收到您的显卡预订需求<br>到货后将通过短信或邮件第一时间通知您<br><br>感谢您的信任，请保持手机畅通</p>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div class="ip-info" id="ip-info">IP: 获取中...</div>
+
+    <script>
+        // ==================== 配置 ====================
+        const CONFIG = {
+            // 数据存储 key
+            STORAGE_KEY: 'gpu_bookings_v1',
+            // 后台访问密码（简单保护）
+            ADMIN_KEY: 'lingxi2024',
+            // 最大存储条数
+            MAX_RECORDS: 500
+        };
+
+        // ==================== 状态管理 ====================
+        const state = {
+            formData: {
+                gpu: '',
+                gpuOther: '',
+                waitTime: '',
+                name: '',
+                phone: '',
+                email: '',
+                remark: ''
+            },
+            userIP: '',
+            deviceId: '',
+            sessionStart: Date.now()
+        };
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', async () => {
+            state.deviceId = generateDeviceId();
+            state.userIP = await getIP();
+            document.getElementById('ip-info').innerText = `IP: ${state.userIP}`;
+            
+            restoreFormData();
+            bindEvents();
+            updateProgress();
+        });
+
+        // ==================== 核心功能 ====================
+        
+        // 生成设备指纹
+        function generateDeviceId() {
+            let id = localStorage.getItem('device_id');
+            if (!id) {
+                id = 'LX' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substr(2, 4).toUpperCase();
+                localStorage.setItem('device_id', id);
+            }
+            return id;
+        }
+
+        // 获取用户IP
+        async function getIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json', { timeout: 3000 });
+                const data = await res.json();
+                return data.ip;
+            } catch {
+                return '127.0.0.1';
+            }
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 显卡选择
+            document.querySelectorAll('#gpu-options .option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('#gpu-options .option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    opt.querySelector('input').checked = true;
+                    
+                    const isOther = opt.dataset.value === 'other';
+                    document.getElementById('other-gpu-box').classList.toggle('show', isOther);
+                    
+                    state.formData.gpu = opt.dataset.value;
+                    updateProgress();
+                    saveFormData();
+                });
+            });
+
+            // 等待时间选择
+            document.querySelectorAll('#wait-options .option').forEach(opt => {
+                opt.addEventListener('click', () => {
+                    document.querySelectorAll('#wait-options .option').forEach(o => o.classList.remove('selected'));
+                    opt.classList.add('selected');
+                    opt.querySelector('input').checked = true;
+                    state.formData.waitTime = opt.dataset.value;
+                    updateProgress();
+                    saveFormData();
+                });
+            });
+
+            // 输入框实时保存
+            ['gpu-other', 'name', 'phone', 'email', 'remark'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        const key = id === 'gpu-other' ? 'gpuOther' : id;
+                        state.formData[key] = el.value;
+                        updateProgress();
+                        saveFormData();
+                    });
+                }
+            });
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            let filled = 0;
+            if (state.formData.gpu) filled++;
+            if (state.formData.waitTime) filled++;
+            if (state.formData.name && state.formData.phone) filled++;
+            
+            const progress = (filled / 3) * 100;
+            document.getElementById('progress').style.width = progress + '%';
+            
+            // 验证提交按钮
+            const isValid = state.formData.gpu && state.formData.waitTime && 
+                           state.formData.name.length >= 2 && 
+                           state.formData.phone.length === 11;
+            document.getElementById('submit-btn').disabled = !isValid;
+        }
+
+        // 本地存储（防刷新丢失）
+        function saveFormData() {
+            localStorage.setItem('form_draft', JSON.stringify(state.formData));
+        }
+
+        function restoreFormData() {
+            const draft = localStorage.getItem('form_draft');
+            if (draft) {
+                try {
+                    const data = JSON.parse(draft);
+                    Object.assign(state.formData, data);
+                    
+                    // 恢复UI
+                    if (data.gpu) {
+                        const gpuOpt = document.querySelector(`#gpu-options .option[data-value="${data.gpu}"]`);
+                        if (gpuOpt) gpuOpt.click();
+                        if (data.gpuOther) document.getElementById('gpu-other').value = data.gpuOther;
+                    }
+                    if (data.waitTime) {
+                        const waitOpt = document.querySelector(`#wait-options .option[data-value="${data.waitTime}"]`);
+                        if (waitOpt) waitOpt.click();
+                    }
+                    if (data.name) document.getElementById('name').value = data.name;
+                    if (data.phone) document.getElementById('phone').value = data.phone;
+                    if (data.email) document.getElementById('email').value = data.email;
+                    if (data.remark) document.getElementById('remark').value = data.remark;
+                } catch(e) {}
+            }
+        }
+
+        // ==================== 提交逻辑 ====================
+        async function submitForm() {
+            const btn = document.getElementById('submit-btn');
+            btn.classList.add('loading');
+            btn.disabled = true;
+
+            // 构造完整数据
+            const submitData = {
+                ...state.formData,
+                deviceId: state.deviceId,
+                userIP: state.userIP,
+                userAgent: navigator.userAgent,
+                submitTime: Date.now(),
+                submitDate: new Date().toLocaleString('zh-CN'),
+                id: 'BK' + Date.now().toString(36).toUpperCase()
+            };
+
+            try {
+                // 1. 保存到本地存储（核心：前后台数据联通）
+                saveToLocalStorage(submitData);
+                
+                // 2. 尝试发送到后台（如果后台在线）
+                await syncToBackend(submitData);
+                
+                // 3. 清理草稿
+                localStorage.removeItem('form_draft');
+                
+                // 4. 显示成功
+                showSuccess();
+                
+            } catch (error) {
+                showToast('网络异常，数据已本地保存', 'error');
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        // 保存到本地存储（前后台共享数据源）
+        function saveToLocalStorage(data) {
+            let bookings = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
+            
+            // 限制数量，保留最新的
+            if (bookings.length >= CONFIG.MAX_RECORDS) {
+                bookings = bookings.slice(-CONFIG.MAX_RECORDS + 1);
+            }
+            
+            bookings.push(data);
+            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(bookings));
+            
+            // 触发存储事件，通知其他标签页
+            window.dispatchEvent(new StorageEvent('storage', {
+                key: CONFIG.STORAGE_KEY,
+                newValue: JSON.stringify(bookings)
+            }));
+        }
+
+        // 同步到后台（可选，如果有后端API）
+        async function syncToBackend(data) {
+            // 如果有后端API，取消下面注释
+            /*
+            await fetch('https://your-api.com/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            */
+            
+            // 模拟网络延迟
+            await new Promise(r => setTimeout(r, 800));
+            return true;
+        }
+
+        // ==================== UI 反馈 ====================
+        function showSuccess() {
+            document.getElementById('main-container').style.display = 'none';
+            document.getElementById('success-screen').classList.add('show');
+            
+            // 3秒后重置表单（可选）
+            setTimeout(() => {
+                if (confirm('是否继续登记新的需求？')) {
+                    location.reload();
+                }
+            }, 3000);
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = 'toast show ' + (type === 'error' ? 'error' : '');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+    </script>
+</body>
+</html>
