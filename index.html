@@ -296,10 +296,10 @@
     </div>
 
     <div class="toast" id="toast"></div>
-
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.35.0/dist/supabase.min.js"></script>
     <script>
         // ==================== 配置：替换为你的 Supabase 信息 ====================
-        const SUPABASE_URL = 'https://https://ydyzjrkvmfpuqbsgbmxy.supabase.co';
+        const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_nXZXDzW53KKCxFCxZ8eoJw_1-7HOuZ0';
         
         // 初始化 Supabase
@@ -396,7 +396,7 @@
 
                 // 提交到 Supabase
                 const { data, error } = await supabase
-                    .from('booking')
+                    .from('bookings')
                     .insert([submitData])
                     .select();
 
