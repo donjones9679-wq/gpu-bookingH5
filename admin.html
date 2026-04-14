@@ -4,115 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>显卡预订后台 - 灵犀智算</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a0a; color: #e0e0e0; min-height: 100vh;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
         
-        /* 登录层 */
-        .login-screen { 
-            position: fixed; inset: 0; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%);
-            display: flex; align-items: center; justify-content: center; z-index: 1000;
-        }
-        .login-box { 
-            background: rgba(26, 26, 26, 0.9); padding: 40px; border-radius: 16px;
-            border: 1px solid rgba(0, 212, 170, 0.2); width: 90%; max-width: 400px;
-            backdrop-filter: blur(10px);
-        }
+        .login-screen { position: fixed; inset: 0; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+        .login-box { background: rgba(26, 26, 26, 0.9); padding: 40px; border-radius: 16px; border: 1px solid rgba(0, 212, 170, 0.2); width: 90%; max-width: 400px; }
         .login-box h2 { text-align: center; margin-bottom: 24px; color: #00d4aa; }
-        .login-box input { 
-            width: 100%; padding: 14px; margin-bottom: 16px;
-            background: rgba(0,0,0,0.3); border: 1px solid #333;
-            border-radius: 8px; color: #fff; font-size: 15px;
-        }
-        .login-box input:focus { outline: none; border-color: #00d4aa; }
-        .login-box button { 
-            width: 100%; padding: 14px; background: #00d4aa; color: #000;
-            border: none; border-radius: 8px; font-weight: 700; cursor: pointer;
-        }
+        .login-box input { width: 100%; padding: 14px; margin-bottom: 16px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 15px; }
+        .login-box button { width: 100%; padding: 14px; background: #00d4aa; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
         
-        /* 主界面 */
         .app { display: none; }
         .app.show { display: block; }
         
-        .sidebar { 
-            position: fixed; left: 0; top: 0; width: 260px; height: 100vh;
-            background: #111; border-right: 1px solid #222; padding: 24px;
-        }
-        .logo { 
-            font-size: 20px; font-weight: 700; color: #00d4aa; 
-            margin-bottom: 32px; display: flex; align-items: center; gap: 10px;
-        }
-        .nav-item { 
-            padding: 12px 16px; border-radius: 8px; cursor: pointer;
-            margin-bottom: 4px; transition: all 0.3s; display: flex; align-items: center; gap: 12px;
-            color: #888; font-size: 14px;
-        }
+        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: #111; border-right: 1px solid #222; padding: 24px; }
+        .logo { font-size: 20px; font-weight: 700; color: #00d4aa; margin-bottom: 32px; display: flex; align-items: center; gap: 10px; }
+        .nav-item { padding: 12px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; transition: all 0.3s; display: flex; align-items: center; gap: 12px; color: #888; font-size: 14px; }
         .nav-item:hover, .nav-item.active { background: rgba(0, 212, 170, 0.1); color: #00d4aa; }
         
         .main { margin-left: 260px; padding: 32px; }
-        
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
         .header h1 { font-size: 24px; font-weight: 600; }
-        .header-actions { display: flex; gap: 12px; }
         
-        .btn { 
-            padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
-            font-size: 14px; font-weight: 500; transition: all 0.3s;
-        }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; }
         .btn-primary { background: #00d4aa; color: #000; }
-        .btn-primary:hover { background: #00f5c4; }
         .btn-secondary { background: #252525; color: #fff; border: 1px solid #333; }
-        .btn-secondary:hover { background: #333; }
         
-        /* 统计卡片 */
         .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
-        .stat-card { 
-            background: rgba(26, 26, 26, 0.8); padding: 24px; border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
+        .stat-card { background: rgba(26, 26, 26, 0.8); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
         .stat-value { font-size: 32px; font-weight: 700; color: #00d4aa; margin-bottom: 4px; }
         .stat-label { color: #666; font-size: 13px; }
-        .stat-change { font-size: 12px; color: #00d4aa; margin-top: 8px; }
         
-        /* 筛选栏 */
-        .filters { 
-            display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap;
-            background: rgba(26, 26, 26, 0.6); padding: 16px; border-radius: 12px;
-        }
-        .filter-btn { 
-            padding: 8px 16px; background: transparent; border: 1px solid #333;
-            border-radius: 6px; color: #888; cursor: pointer; font-size: 13px;
-            transition: all 0.3s;
-        }
-        .filter-btn:hover, .filter-btn.active { 
-            background: rgba(0, 212, 170, 0.1); border-color: #00d4aa; color: #00d4aa;
-        }
-        .search-box { 
-            flex: 1; min-width: 200px; padding: 8px 16px; background: rgba(0,0,0,0.3);
-            border: 1px solid #333; border-radius: 6px; color: #fff;
-        }
+        .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; background: rgba(26, 26, 26, 0.6); padding: 16px; border-radius: 12px; }
+        .filter-btn { padding: 8px 16px; background: transparent; border: 1px solid #333; border-radius: 6px; color: #888; cursor: pointer; font-size: 13px; }
+        .filter-btn:hover, .filter-btn.active { background: rgba(0, 212, 170, 0.1); border-color: #00d4aa; color: #00d4aa; }
+        .search-box { flex: 1; min-width: 200px; padding: 8px 16px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 6px; color: #fff; }
         
-        /* 数据表格 */
-        .table-container { 
-            background: rgba(26, 26, 26, 0.6); border-radius: 12px; overflow: hidden;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
+        .table-container { background: rgba(26, 26, 26, 0.6); border-radius: 12px; overflow: hidden; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { 
-            background: rgba(0,0,0,0.3); padding: 16px; text-align: left;
-            color: #888; font-weight: 500; font-size: 12px; text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        th { background: rgba(0,0,0,0.3); padding: 16px; text-align: left; color: #888; font-weight: 500; font-size: 12px; text-transform: uppercase; }
         td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
         tr:hover { background: rgba(255,255,255,0.02); }
         
-        .tag { 
-            display: inline-flex; align-items: center; padding: 4px 10px;
-            border-radius: 4px; font-size: 12px; font-weight: 500;
-        }
+        .tag { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; }
         .tag-rtx5090 { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
         .tag-rtx4090 { background: rgba(78, 205, 196, 0.15); color: #4ecdc4; }
         .tag-rtx3090 { background: rgba(255, 230, 109, 0.15); color: #ffe66d; }
@@ -120,139 +55,77 @@
         .tag-urgent { background: rgba(255, 107, 107, 0.9); color: #fff; }
         .tag-normal { background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
         
-        .action-btn { 
-            padding: 6px 12px; background: rgba(0, 212, 170, 0.1);
-            border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 4px;
-            color: #00d4aa; cursor: pointer; font-size: 12px;
-        }
-        .action-btn:hover { background: rgba(0, 212, 170, 0.2); }
+        .action-btn { padding: 6px 12px; background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 4px; color: #00d4aa; cursor: pointer; font-size: 12px; }
         
-        .empty-state { text-align: center; padding: 60px; color: #666; }
-        
-        /* 详情弹窗 */
-        .modal { 
-            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-            z-index: 100; align-items: center; justify-content: center;
-            backdrop-filter: blur(4px);
-        }
-        .modal.show { display: flex; }
-        .modal-content { 
-            background: #1a1a1a; width: 90%; max-width: 600px; max-height: 80vh;
-            border-radius: 16px; overflow: hidden; border: 1px solid #333;
-        }
-        .modal-header { 
-            padding: 24px; border-bottom: 1px solid #333;
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .modal-body { padding: 24px; overflow-y: auto; max-height: 60vh; }
-        .detail-grid { 
-            display: grid; grid-template-columns: 100px 1fr; gap: 16px;
-            font-size: 14px;
-        }
-        .detail-label { color: #666; }
-        .detail-value { color: #fff; font-weight: 500; }
-        
-        .timeline { margin-top: 24px; padding-top: 24px; border-top: 1px solid #333; }
-        .timeline-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #00d4aa; }
-        
-        .sync-status { 
-            position: fixed; bottom: 24px; right: 24px;
-            display: flex; align-items: center; gap: 8px;
-            background: rgba(0, 212, 170, 0.1); padding: 12px 20px;
-            border-radius: 8px; border: 1px solid rgba(0, 212, 170, 0.2);
-            font-size: 13px; color: #00d4aa;
-        }
-        .sync-dot { 
-            width: 8px; height: 8px; background: #00d4aa; border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
+        .sync-status { position: fixed; bottom: 24px; right: 24px; display: flex; align-items: center; gap: 8px; background: rgba(0, 212, 170, 0.1); padding: 12px 20px; border-radius: 8px; border: 1px solid rgba(0, 212, 170, 0.2); font-size: 13px; color: #00d4aa; }
+        .sync-dot { width: 8px; height: 8px; background: #00d4aa; border-radius: 50%; animation: pulse 2s infinite; }
         @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
         
-        @media (max-width: 1024px) {
-            .stats { grid-template-columns: repeat(2, 1fr); }
-            .sidebar { width: 200px; }
-            .main { margin-left: 200px; }
-        }
         @media (max-width: 768px) {
             .sidebar { display: none; }
             .main { margin-left: 0; padding: 20px; }
-            .stats { grid-template-columns: 1fr; }
+            .stats { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <!-- 登录界面 -->
     <div class="login-screen" id="login-screen">
         <div class="login-box">
             <h2>🔐 后台管理登录</h2>
             <input type="password" id="pwd" placeholder="请输入访问密码" onkeypress="if(event.key==='Enter')doLogin()">
             <button onclick="doLogin()">进入系统</button>
-            <p style="text-align:center; margin-top:16px; font-size:12px; color:#666;">
-                默认密码: lingxi2024
-            </p>
+            <p style="text-align:center; margin-top:16px; font-size:12px; color:#666;">默认密码: lingxi2024</p>
         </div>
     </div>
 
-    <!-- 主应用 -->
     <div class="app" id="app">
         <div class="sidebar">
             <div class="logo">🖥️ 灵犀智算</div>
-            <div class="nav-item active" onclick="switchTab('list')">📋 预订列表</div>
-            <div class="nav-item" onclick="switchTab('stats')">📊 数据分析</div>
+            <div class="nav-item active" onclick="loadData()">📋 预订列表</div>
             <div class="nav-item" onclick="exportData()">📥 导出Excel</div>
-            <div class="nav-item" onclick="clearAllData()" style="color:#ff6b6b;">🗑️ 清空数据</div>
         </div>
 
         <div class="main">
             <div class="header">
                 <h1>显卡预订管理</h1>
                 <div class="header-actions">
-                    <button class="btn btn-secondary" onclick="refreshData()">🔄 刷新</button>
+                    <button class="btn btn-secondary" onclick="loadData()">🔄 刷新</button>
                     <button class="btn btn-primary" onclick="exportData()">导出数据</button>
                 </div>
             </div>
 
-            <!-- 统计卡片 -->
             <div class="stats">
                 <div class="stat-card">
                     <div class="stat-value" id="stat-total">0</div>
                     <div class="stat-label">总预订数</div>
-                    <div class="stat-change">累计数据</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="stat-today">0</div>
                     <div class="stat-label">今日新增</div>
-                    <div class="stat-change">实时更新</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="stat-5090">0</div>
                     <div class="stat-label">RTX 5090 需求</div>
-                    <div class="stat-change">旗舰级</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-value" id="stat-urgent">0</div>
                     <div class="stat-label">急需客户</div>
-                    <div class="stat-change">优先处理</div>
                 </div>
             </div>
 
-            <!-- 筛选器 -->
             <div class="filters">
                 <button class="filter-btn active" onclick="filterData('all')">全部</button>
                 <button class="filter-btn" onclick="filterData('RTX5090')">RTX 5090</button>
                 <button class="filter-btn" onclick="filterData('RTX4090')">RTX 4090</button>
                 <button class="filter-btn" onclick="filterData('RTX3090')">RTX 3090</button>
                 <button class="filter-btn" onclick="filterData('urgent')">🚨 急需</button>
-                <button class="filter-btn" onclick="filterData('today')">📅 今日</button>
                 <input type="text" class="search-box" placeholder="🔍 搜索姓名、手机号..." oninput="searchTable(this.value)">
             </div>
 
-            <!-- 数据表格 -->
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>单号</th>
                             <th>提交时间</th>
                             <th>客户信息</th>
                             <th>显卡型号</th>
@@ -262,272 +135,127 @@
                         </tr>
                     </thead>
                     <tbody id="table-body">
-                        <tr><td colspan="7" class="empty-state">暂无数据</td></tr>
+                        <tr><td colspan="6" style="text-align:center; padding:60px; color:#666;">加载中...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <!-- 详情弹窗 -->
-    <div class="modal" id="modal" onclick="closeModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <h3>预订详情</h3>
-                <span style="cursor:pointer; font-size:24px; color:#666;" onclick="closeModal()">&times;</span>
-            </div>
-            <div class="modal-body" id="modal-body"></div>
-        </div>
-    </div>
-
     <div class="sync-status">
         <div class="sync-dot"></div>
-        <span>实时同步中 · <span id="record-count">0</span> 条记录</span>
+        <span>云端实时同步 · <span id="record-count">0</span> 条记录</span>
     </div>
 
     <script>
-        // ==================== 配置 ====================
-        const CONFIG = {
-            STORAGE_KEY: 'gpu_bookings_v1',
-            PWD_HASH: 'lingxi2024', // 简单密码，生产环境请加密
-            SYNC_INTERVAL: 3000
-        };
+        // ==================== 配置：替换为你的 Supabase 信息 ====================
+        const SUPABASE_URL = 'https://你的项目ID.supabase.co';
+        const SUPABASE_KEY = '你的Anon Key';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         let allData = [];
-        let currentFilter = 'all';
 
-        // ==================== 登录 ====================
         function doLogin() {
-            const pwd = document.getElementById('pwd').value;
-            if (pwd === CONFIG.PWD_HASH) {
+            if (document.getElementById('pwd').value === 'lingxi2024') {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('app').classList.add('show');
-                initApp();
+                loadData();
+                // 自动刷新
+                setInterval(loadData, 5000);
             } else {
                 alert('密码错误');
             }
         }
 
-        // ==================== 初始化 ====================
-        function initApp() {
-            loadData();
-            // 定时刷新（检测新数据）
-            setInterval(loadData, CONFIG.SYNC_INTERVAL);
-            
-            // 监听 storage 变化（跨标签页同步）
-            window.addEventListener('storage', (e) => {
-                if (e.key === CONFIG.STORAGE_KEY) {
-                    loadData();
-                }
-            });
-        }
+        async function loadData() {
+            const { data, error } = await supabase
+                .from('bookings')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        // ==================== 数据加载 ====================
-        function loadData() {
-            const data = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEY) || '[]');
-            allData = data.sort((a, b) => b.submitTime - a.submitTime);
+            if (error) {
+                console.error('加载失败:', error);
+                return;
+            }
+
+            allData = data || [];
             renderTable();
             updateStats();
             document.getElementById('record-count').innerText = allData.length;
         }
 
-        // ==================== 渲染 ====================
         function renderTable(data = allData) {
             const tbody = document.getElementById('table-body');
-            
             if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">暂无数据</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:60px; color:#666;">暂无数据</td></tr>';
                 return;
             }
 
             tbody.innerHTML = data.map(item => {
-                const date = new Date(item.submitTime).toLocaleString('zh-CN', {
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                const date = new Date(item.created_at).toLocaleString('zh-CN', { 
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
                 });
-                
-                const gpuTagClass = `tag-${item.gpu.toLowerCase()}`;
-                const urgencyTag = item.waitTime === 'immediate' 
+                const gpuClass = `tag-${item.gpu.toLowerCase()}`;
+                const urgencyTag = item.wait_time === 'immediate' 
                     ? '<span class="tag tag-urgent">急需</span>' 
                     : '<span class="tag tag-normal">一般</span>';
                 
                 return `
                     <tr>
-                        <td><code style="background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px; font-size:12px;">${item.id?.slice(-6) || 'N/A'}</code></td>
                         <td>${date}</td>
                         <td>
-                            <div style="font-weight:500;">${escapeHtml(item.name)}</div>
-                            <div style="font-size:12px; color:#666; margin-top:2px;">${maskPhone(item.phone)}</div>
+                            <div style="font-weight:500;">${item.name}</div>
+                            <div style="font-size:12px; color:#666;">${item.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}</div>
                         </td>
-                        <td><span class="tag ${gpuTagClass}">${item.gpu}${item.gpuOther ? '*' : ''}</span></td>
+                        <td><span class="tag ${gpuClass}">${item.gpu}${item.gpu_other ? '*' : ''}</span></td>
                         <td>${urgencyTag}</td>
-                        <td><span style="font-size:12px; color:#666;">${item.userIP || '-'}</span></td>
-                        <td><button class="action-btn" onclick="showDetail('${item.id}')">查看</button></td>
+                        <td><span style="font-size:12px; color:#666;">${item.user_ip || '-'}</span></td>
+                        <td><button class="action-btn" onclick="alert('电话：${item.phone}\\n邮箱：${item.email || '无'}\\n备注：${item.remark || '无'}')">查看</button></td>
                     </tr>
                 `;
             }).join('');
         }
 
         function updateStats() {
-            const today = new Date().setHours(0, 0, 0, 0);
-            const todayCount = allData.filter(d => d.submitTime >= today).length;
-            const count5090 = allData.filter(d => d.gpu === 'RTX5090').length;
-            const urgentCount = allData.filter(d => d.waitTime === 'immediate').length;
-
+            const today = new Date().toISOString().split('T')[0];
             document.getElementById('stat-total').innerText = allData.length;
-            document.getElementById('stat-today').innerText = todayCount;
-            document.getElementById('stat-5090').innerText = count5090;
-            document.getElementById('stat-urgent').innerText = urgentCount;
+            document.getElementById('stat-today').innerText = allData.filter(d => d.created_at?.startsWith(today)).length;
+            document.getElementById('stat-5090').innerText = allData.filter(d => d.gpu === 'RTX5090').length;
+            document.getElementById('stat-urgent').innerText = allData.filter(d => d.wait_time === 'immediate').length;
         }
 
-        // ==================== 筛选与搜索 ====================
         function filterData(type) {
-            currentFilter = type;
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
-
+            
             let filtered = allData;
-            if (type === 'urgent') {
-                filtered = allData.filter(d => d.waitTime === 'immediate');
-            } else if (type === 'today') {
-                const today = new Date().setHours(0, 0, 0, 0);
-                filtered = allData.filter(d => d.submitTime >= today);
-            } else if (type !== 'all') {
-                filtered = allData.filter(d => d.gpu === type);
-            }
+            if (type === 'urgent') filtered = allData.filter(d => d.wait_time === 'immediate');
+            else if (type !== 'all') filtered = allData.filter(d => d.gpu === type);
+            
             renderTable(filtered);
         }
 
         function searchTable(keyword) {
-            if (!keyword) {
-                renderTable(allData);
-                return;
-            }
+            if (!keyword) { renderTable(allData); return; }
             const filtered = allData.filter(d => 
-                d.name.includes(keyword) || 
-                d.phone.includes(keyword) ||
-                d.id?.includes(keyword)
+                d.name.includes(keyword) || d.phone.includes(keyword)
             );
             renderTable(filtered);
         }
 
-        // ==================== 详情查看 ====================
-        function showDetail(id) {
-            const item = allData.find(d => d.id === id);
-            if (!item) return;
-
-            const waitText = {
-                'immediate': '🚨 立即需要（一周内）',
-                '15days': '📅 15天之内',
-                '1month': '🕐 一个月内'
-            }[item.waitTime] || item.waitTime;
-
-            document.getElementById('modal-body').innerHTML = `
-                <div class="detail-grid">
-                    <div class="detail-label">预订单号</div>
-                    <div class="detail-value" style="font-family:monospace;">${item.id}</div>
-                    
-                    <div class="detail-label">客户姓名</div>
-                    <div class="detail-value">${escapeHtml(item.name)}</div>
-                    
-                    <div class="detail-label">手机号码</div>
-                    <div class="detail-value">${item.phone} <a href="tel:${item.phone}" style="color:#00d4aa; margin-left:8px;">📞 拨打</a></div>
-                    
-                    <div class="detail-label">电子邮箱</div>
-                    <div class="detail-value">${item.email || '<span style="color:#666;">未填写</span>'}</div>
-                    
-                    <div class="detail-label">显卡型号</div>
-                    <div class="detail-value">${item.gpu} ${item.gpuOther ? `(${item.gpuOther})` : ''}</div>
-                    
-                    <div class="detail-label">等待时长</div>
-                    <div class="detail-value">${waitText}</div>
-                    
-                    <div class="detail-label">备注需求</div>
-                    <div class="detail-value" style="white-space:pre-wrap;">${escapeHtml(item.remark) || '<span style="color:#666;">无</span>'}</div>
-                    
-                    <div class="detail-label">提交时间</div>
-                    <div class="detail-value">${item.submitDate}</div>
-                    
-                    <div class="detail-label">用户IP</div>
-                    <div class="detail-value">${item.userIP || '-'} <span style="color:#666; font-size:12px;">(${item.deviceId})</span></div>
-                    
-                    <div class="detail-label">设备信息</div>
-                    <div class="detail-value" style="font-size:12px; color:#666; word-break:break-all;">${item.userAgent?.slice(0, 100) || '-'}</div>
-                </div>
-                
-                <div style="margin-top:24px; display:flex; gap:12px;">
-                    <button class="btn btn-primary" onclick="copyContact('${item.phone}', '${item.name}')">📋 复制联系方式</button>
-                    <button class="btn btn-secondary" onclick="deleteRecord('${item.id}')">🗑️ 删除记录</button>
-                </div>
-            `;
-            
-            document.getElementById('modal').classList.add('show');
-        }
-
-        function closeModal(e) {
-            if (!e || e.target.id === 'modal') {
-                document.getElementById('modal').classList.remove('show');
-            }
-        }
-
-        // ==================== 操作功能 ====================
-        function copyContact(phone, name) {
-            const text = `姓名：${name}，电话：${phone}`;
-            navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板'));
-        }
-
-        function deleteRecord(id) {
-            if (!confirm('确定删除这条记录？')) return;
-            allData = allData.filter(d => d.id !== id);
-            localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(allData));
-            loadData();
-            closeModal();
-        }
-
-        function clearAllData() {
-            if (!confirm('⚠️ 确定清空所有数据？此操作不可恢复！')) return;
-            if (!confirm('再次确认：真的要删除全部 ' + allData.length + ' 条记录吗？')) return;
-            localStorage.removeItem(CONFIG.STORAGE_KEY);
-            loadData();
-        }
-
         function exportData() {
-            const headers = ['单号', '提交时间', '姓名', '手机号', '邮箱', '显卡型号', '其他型号', '等待时间', '备注', 'IP地址', '设备ID'];
+            const headers = ['提交时间', '姓名', '手机号', '邮箱', '显卡型号', '其他型号', '等待时间', '备注', 'IP地址'];
             const rows = allData.map(item => [
-                item.id, item.submitDate, item.name, item.phone, item.email || '',
-                item.gpu, item.gpuOther || '', item.waitTime, item.remark || '',
-                item.userIP || '', item.deviceId || ''
+                item.created_at, item.name, item.phone, item.email || '',
+                item.gpu, item.gpu_other || '', item.wait_time, item.remark || '', item.user_ip || ''
             ]);
-            
             const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
             const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = `显卡预订数据_${new Date().toLocaleDateString()}.csv`;
             link.click();
-        }
-
-        function refreshData() {
-            loadData();
-            // 按钮动画反馈
-            const btn = event.target;
-            btn.innerText = '✓ 已刷新';
-            setTimeout(() => btn.innerText = '🔄 刷新', 1000);
-        }
-
-        function switchTab(tab) {
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            event.target.classList.add('active');
-            // 可扩展其他标签页逻辑
-        }
-
-        // ==================== 工具函数 ====================
-        function escapeHtml(text) {
-            if (!text) return '';
-            return text.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m]));
-        }
-
-        function maskPhone(phone) {
-            return phone?.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2') || '';
         }
     </script>
 </body>
