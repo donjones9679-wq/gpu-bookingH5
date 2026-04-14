@@ -398,7 +398,7 @@ async function submitForm() {
 
         // 提交到 Supabase
         const { data, error } = await supabase
-            .from('booking')
+            .from('bookings')
             .insert([submitData])
             .select();
 
