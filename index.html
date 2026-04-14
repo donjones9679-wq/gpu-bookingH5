@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>显卡预订登记 - 灵犀智算</title>
-    <!-- 引入 Supabase JS 客户端 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -143,7 +142,7 @@
             background: #333; color: #666; cursor: not-allowed;
             box-shadow: none; transform: none;
         }
-        .submit-btn.loading { color: transparent; }
+        .submit-btn.loading { color: transparent; pointer-events: none; }
         .submit-btn.loading::after {
             content: ''; position: absolute; width: 20px; height: 20px;
             top: 50%; left: 50%; margin: -10px 0 0 -10px;
@@ -327,15 +326,21 @@
         const SUPABASE_URL = 'https://你的项目ID.supabase.co';
         const SUPABASE_KEY = '你的Anon Key';
         
-        // 初始化 Supabase 客户端
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        const state = {
-            formData: { gpu: '', gpuOther: '', waitTime: '', name: '', phone: '', email: '', remark: '' },
-            userIP: ''
-        };
-
-        document.addEventListener('DOMContentLoaded', async () => {
+        // 修复：正确使用全局 supabase 对象
+        let supabaseClient;
+        
+        // 等待 DOM 和脚本加载完成
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 初始化 Supabase 客户端（修复点）
+            if (typeof supabase !== 'undefined' && supabase.createClient) {
+                supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                console.log('Supabase 初始化成功');
+            } else {
+                console.error('Supabase 库加载失败');
+                showToast('系统初始化失败，请刷新页面', 'error');
+                return;
+            }
+            
             // 获取IP
             try {
                 const res = await fetch('https://api.ipify.org?format=json');
@@ -348,6 +353,11 @@
             bindEvents();
             updateProgress();
         });
+
+        const state = {
+            formData: { gpu: '', gpuOther: '', waitTime: '', name: '', phone: '', email: '', remark: '' },
+            userIP: ''
+        };
 
         function bindEvents() {
             // 显卡选择
@@ -401,17 +411,25 @@
         }
 
         async function submitForm() {
+            // 检查 Supabase 是否初始化
+            if (!supabaseClient) {
+                showToast('系统未就绪，请刷新页面重试', 'error');
+                return;
+            }
+
             const btn = document.getElementById('submit-btn');
             btn.classList.add('loading');
             btn.disabled = true;
 
             try {
+                console.log('开始提交数据:', state.formData);
+                
                 // 提交到 Supabase
-                const { data, error } = await supabase
+                const { data, error } = await supabaseClient
                     .from('bookings')
                     .insert([{
                         gpu: state.formData.gpu,
-                        gpu_other: state.formData.gpuOther,
+                        gpu_other: state.formData.gpuOther || null,
                         wait_time: state.formData.waitTime,
                         name: state.formData.name,
                         phone: state.formData.phone,
@@ -420,16 +438,23 @@
                         user_ip: state.userIP,
                         device_id: 'WEB_' + Math.random().toString(36).substr(2, 9),
                         user_agent: navigator.userAgent
-                    }]);
+                    }])
+                    .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase 错误:', error);
+                    throw error;
+                }
 
-                // 显示成功
+                console.log('提交成功:', data);
+                
+                // 显示成功页面
                 document.getElementById('main-container').style.display = 'none';
                 document.getElementById('success-screen').classList.add('show');
 
             } catch (err) {
-                showToast('提交失败，请重试：' + err.message, 'error');
+                console.error('提交失败:', err);
+                showToast('提交失败：' + (err.message || '请检查网络'), 'error');
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
