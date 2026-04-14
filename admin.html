@@ -4,300 +4,201 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>显卡预订后台 - 灵犀智算</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.35.0/dist/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e0e0e0; min-height: 100vh; }
-        
-        .login-screen { position: fixed; inset: 0; background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 100%); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .login-box { background: rgba(26, 26, 26, 0.9); padding: 40px; border-radius: 16px; border: 1px solid rgba(0, 212, 170, 0.2); width: 90%; max-width: 400px; }
-        .login-box h2 { text-align: center; margin-bottom: 24px; color: #00d4aa; }
-        .login-box input { width: 100%; padding: 14px; margin-bottom: 16px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 15px; }
-        .login-box button { width: 100%; padding: 14px; background: #00d4aa; color: #000; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
-        
-        .app { display: none; }
-        .app.show { display: block; }
-        
-        .sidebar { position: fixed; left: 0; top: 0; width: 260px; height: 100vh; background: #111; border-right: 1px solid #222; padding: 24px; }
-        .logo { font-size: 20px; font-weight: 700; color: #00d4aa; margin-bottom: 32px; display: flex; align-items: center; gap: 10px; }
-        .nav-item { padding: 12px 16px; border-radius: 8px; cursor: pointer; margin-bottom: 4px; transition: all 0.3s; display: flex; align-items: center; gap: 12px; color: #888; font-size: 14px; }
-        .nav-item:hover, .nav-item.active { background: rgba(0, 212, 170, 0.1); color: #00d4aa; }
-        
-        .main { margin-left: 260px; padding: 32px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
-        .header h1 { font-size: 24px; font-weight: 600; }
-        
-        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; font-weight: 500; }
-        .btn-primary { background: #00d4aa; color: #000; }
-        .btn-secondary { background: #252525; color: #fff; border: 1px solid #333; }
-        
-        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 32px; }
-        .stat-card { background: rgba(26, 26, 26, 0.8); padding: 24px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05); }
-        .stat-value { font-size: 32px; font-weight: 700; color: #00d4aa; margin-bottom: 4px; }
-        .stat-label { color: #666; font-size: 13px; }
-        
-        .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; background: rgba(26, 26, 26, 0.6); padding: 16px; border-radius: 12px; }
-        .filter-btn { padding: 8px 16px; background: transparent; border: 1px solid #333; border-radius: 6px; color: #888; cursor: pointer; font-size: 13px; }
-        .filter-btn:hover, .filter-btn.active { background: rgba(0, 212, 170, 0.1); border-color: #00d4aa; color: #00d4aa; }
-        .search-box { flex: 1; min-width: 200px; padding: 8px 16px; background: rgba(0,0,0,0.3); border: 1px solid #333; border-radius: 6px; color: #fff; }
-        
-        .table-container { background: rgba(26, 26, 26, 0.6); border-radius: 12px; overflow: hidden; }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: rgba(0,0,0,0.3); padding: 16px; text-align: left; color: #888; font-weight: 500; font-size: 12px; text-transform: uppercase; }
-        td { padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        tr:hover { background: rgba(255,255,255,0.02); }
-        
-        .tag { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 500; }
-        .tag-rtx5090 { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
-        .tag-rtx4090 { background: rgba(78, 205, 196, 0.15); color: #4ecdc4; }
-        .tag-rtx3090 { background: rgba(255, 230, 109, 0.15); color: #ffe66d; }
-        .tag-other { background: rgba(136, 136, 136, 0.15); color: #888; }
-        .tag-urgent { background: rgba(255, 107, 107, 0.9); color: #fff; }
-        .tag-normal { background: rgba(0, 212, 170, 0.15); color: #00d4aa; }
-        
-        .action-btn { padding: 6px 12px; background: rgba(0, 212, 170, 0.1); border: 1px solid rgba(0, 212, 170, 0.3); border-radius: 4px; color: #00d4aa; cursor: pointer; font-size: 12px; }
-        
-        .sync-status { position: fixed; bottom: 24px; right: 24px; display: flex; align-items: center; gap: 8px; background: rgba(0, 212, 170, 0.1); padding: 12px 20px; border-radius: 8px; border: 1px solid rgba(0, 212, 170, 0.2); font-size: 13px; color: #00d4aa; }
-        .sync-dot { width: 8px; height: 8px; background: #00d4aa; border-radius: 50%; animation: pulse 2s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        
-        .error-msg { background: rgba(255, 107, 107, 0.1); border: 1px solid rgba(255, 107, 107, 0.3); color: #ff6b6b; padding: 20px; border-radius: 8px; margin: 20px; }
-        
-        @media (max-width: 768px) {
-            .sidebar { display: none; }
-            .main { margin-left: 0; padding: 20px; }
-            .stats { grid-template-columns: repeat(2, 1fr); }
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #333; }
+        .header h1 { font-size: 24px; background: linear-gradient(135deg, #00d4aa, #00a8e8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 20px; border-radius: 12px; border: 1px solid #333; }
+        .stat-card h3 { font-size: 14px; color: #888; margin-bottom: 10px; }
+        .stat-card .number { font-size: 32px; font-weight: bold; color: #00d4aa; }
+        .table-container { background: #1a1a2e; border-radius: 12px; overflow: hidden; border: 1px solid #333; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #333; }
+        th { background: #16213e; font-weight: 600; color: #00d4aa; }
+        tr:hover { background: #252542; }
+        .urgency-high { color: #ff4757; font-weight: bold; }
+        .urgency-normal { color: #ffa502; }
+        .urgency-low { color: #2ed573; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn-view { background: #00d4aa; color: #000; }
+        .loading { text-align: center; padding: 40px; color: #888; }
+        .error { color: #ff4757; padding: 20px; text-align: center; }
     </style>
 </head>
 <body>
-    <div class="login-screen" id="login-screen">
-        <div class="login-box">
-            <h2>🔐 后台管理登录</h2>
-            <input type="password" id="pwd" placeholder="请输入访问密码" onkeypress="if(event.key==='Enter')doLogin()">
-            <button onclick="doLogin()">进入系统</button>
-            <p style="text-align:center; margin-top:16px; font-size:12px; color:#666;">默认密码: lingxi2024</p>
-        </div>
-    </div>
-
-    <div class="app" id="app">
-        <div class="sidebar">
-            <div class="logo">🖥️ 灵犀智算</div>
-            <div class="nav-item active" onclick="loadData()">📋 预订列表</div>
-            <div class="nav-item" onclick="exportData()">📥 导出Excel</div>
+    <div class="container">
+        <div class="header">
+            <h1>显卡预订管理</h1>
+            <button onclick="loadData()" class="btn btn-view">刷新数据</button>
         </div>
 
-        <div class="main">
-            <div class="header">
-                <h1>显卡预订管理</h1>
-                <div class="header-actions">
-                    <button class="btn btn-secondary" onclick="loadData()">🔄 刷新</button>
-                    <button class="btn btn-primary" onclick="exportData()">导出数据</button>
-                </div>
+        <div class="stats">
+            <div class="stat-card">
+                <h3>总预订数</h3>
+                <div class="number" id="totalCount">0</div>
             </div>
-
-            <div class="stats">
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-total">0</div>
-                    <div class="stat-label">总预订数</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-today">0</div>
-                    <div class="stat-label">今日新增</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-5090">0</div>
-                    <div class="stat-label">RTX 5090 需求</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="stat-urgent">0</div>
-                    <div class="stat-label">急需客户</div>
-                </div>
+            <div class="stat-card">
+                <h3>今日新增</h3>
+                <div class="number" id="todayCount">0</div>
             </div>
-
-            <div class="filters">
-                <button class="filter-btn active" onclick="filterData('all')">全部</button>
-                <button class="filter-btn" onclick="filterData('RTX5090')">RTX 5090</button>
-                <button class="filter-btn" onclick="filterData('RTX4090')">RTX 4090</button>
-                <button class="filter-btn" onclick="filterData('RTX3090')">RTX 3090</button>
-                <button class="filter-btn" onclick="filterData('urgent')">🚨 急需</button>
-                <input type="text" class="search-box" placeholder="🔍 搜索姓名、手机号..." oninput="searchTable(this.value)">
+            <div class="stat-card">
+                <h3>RTX 5090 需求</h3>
+                <div class="number" id="rtx5090Count">0</div>
             </div>
-
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>提交时间</th>
-                            <th>客户信息</th>
-                            <th>显卡型号</th>
-                            <th>紧急度</th>
-                            <th>IP地址</th>
-                            <th>操作</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body">
-                        <tr><td colspan="6" style="text-align:center; padding:60px; color:#666;">加载中...</td></tr>
-                    </tbody>
-                </table>
+            <div class="stat-card">
+                <h3>急需客户</h3>
+                <div class="number" id="urgentCount">0</div>
             </div>
-            
-            <div id="error-container"></div>
         </div>
-    </div>
 
-    <div class="sync-status">
-        <div class="sync-dot"></div>
-        <span>云端实时同步 · <span id="record-count">0</span> 条记录</span>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>提交时间</th>
+                        <th>客户信息</th>
+                        <th>显卡型号</th>
+                        <th>紧急度</th>
+                        <th>等待时长</th>
+                        <th>IP地址</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="7" class="loading">加载中...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
-        // ==================== 配置区：替换这里！ ====================
-        const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co';  // ← 替换
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlkeXpqcmt2bWZwdXFic2dibXh5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxMzU2MzQsImV4cCI6MjA5MTcxMTYzNH0.xW3XVNJ02T-qhSUwDGOvnkqKPSPbGdE8TGjyywjopEQ';  // ← 替换
+        // ==================== 配置：替换为你的 Supabase 信息 ====================
+        const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIs...'; // 使用 anon key，不是 publishable key
         
+        // 初始化 Supabase
         let supabase;
-        let allData = [];
-
-        // 初始化
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            console.log('Supabase 初始化成功');
+            console.log('✅ Supabase 初始化成功');
         } catch (err) {
-            console.error('Supabase 初始化失败:', err);
-            showError('数据库连接失败，请检查配置');
+            console.error('❌ Supabase 初始化失败:', err);
+            document.getElementById('tableBody').innerHTML = 
+                '<tr><td colspan="7" class="error">系统初始化失败，请检查配置</td></tr>';
         }
 
-        function showError(msg) {
-            document.getElementById('error-container').innerHTML = 
-                '<div class="error-msg">错误: ' + msg + '</div>';
-        }
-
-        function doLogin() {
-            if (document.getElementById('pwd').value === 'lingxi2024') {
-                document.getElementById('login-screen').style.display = 'none';
-                document.getElementById('app').classList.add('show');
-                loadData();
-                setInterval(loadData, 5000);
-            } else {
-                alert('密码错误');
-            }
-        }
-
+        // 加载数据
         async function loadData() {
             try {
-                console.log('正在加载数据...');
+                // 1. 获取总预订数
+                const { count: totalCount, error: countError } = await supabase
+                    .from('bookings')
+                    .select('*', { count: 'exact', head: true });
                 
-                const { data, error } = await supabase
+                if (countError) throw countError;
+                document.getElementById('totalCount').textContent = totalCount || 0;
+
+                // 2. 获取今日新增
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const { count: todayCount, error: todayError } = await supabase
+                    .from('bookings')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', today.toISOString());
+                
+                if (todayError) throw todayError;
+                document.getElementById('todayCount').textContent = todayCount || 0;
+
+                // 3. 获取 RTX 5090 需求数
+                const { count: rtx5090Count, error: rtxError } = await supabase
+                    .from('bookings')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('gpu', 'rtx5090');
+                
+                if (rtxError) throw rtxError;
+                document.getElementById('rtx5090Count').textContent = rtx5090Count || 0;
+
+                // 4. 获取急需客户数（等待时长为 urgent）
+                const { count: urgentCount, error: urgentError } = await supabase
+                    .from('bookings')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('wait_time', 'urgent');
+                
+                if (urgentError) throw urgentError;
+                document.getElementById('urgentCount').textContent = urgentCount || 0;
+
+                // 5. 获取所有预订数据列表
+                const { data: bookings, error: dataError } = await supabase
                     .from('bookings')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) {
-                    console.error('Supabase 错误:', error);
-                    showError('加载失败: ' + error.message);
-                    return;
-                }
+                if (dataError) throw dataError;
 
-                console.log('加载成功，共', data?.length, '条记录');
-                allData = data || [];
-                renderTable();
-                updateStats();
-                document.getElementById('record-count').innerText = allData.length;
-                
+                // 渲染表格
+                renderTable(bookings || []);
+
             } catch (err) {
-                console.error('加载异常:', err);
-                showError('加载异常: ' + err.message);
+                console.error('加载数据失败:', err);
+                document.getElementById('tableBody').innerHTML = 
+                    `<tr><td colspan="7" class="error">加载失败: ${err.message}</td></tr>`;
             }
         }
 
-        function renderTable(data = allData) {
-            const tbody = document.getElementById('table-body');
-            if (data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:60px; color:#666;">暂无数据</td></tr>';
+        // 渲染表格
+        function renderTable(bookings) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (!bookings || bookings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="loading">暂无数据</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = data.map(item => {
-                const date = new Date(item.created_at).toLocaleString('zh-CN', { 
-                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-                });
-                const gpuClass = `tag-${(item.gpu || 'other').toLowerCase()}`;
-                const urgencyTag = item.wait_time === 'immediate' 
-                    ? '<span class="tag tag-urgent">急需</span>' 
-                    : '<span class="tag tag-normal">一般</span>';
+            tbody.innerHTML = bookings.map(booking => {
+                const date = new Date(booking.created_at).toLocaleString('zh-CN');
+                const urgencyClass = booking.wait_time === 'urgent' ? 'urgency-high' : 
+                                    booking.wait_time === 'month' ? 'urgency-normal' : 'urgency-low';
+                const urgencyText = booking.wait_time === 'urgent' ? '急需' : 
+                                   booking.wait_time === 'month' ? '1月内' : '可等待';
                 
+                const gpuText = {
+                    'rtx5090': 'RTX 5090',
+                    'rtx5080': 'RTX 5080',
+                    'rtx4090': 'RTX 4090',
+                    'rtx4080': 'RTX 4080',
+                    'other': booking.gpu_other || '其他'
+                }[booking.gpu] || booking.gpu;
+
                 return `
                     <tr>
                         <td>${date}</td>
                         <td>
-                            <div style="font-weight:500;">${item.name || '未知'}</div>
-                            <div style="font-size:12px; color:#666;">${(item.phone || '').replace(/(\d{3})\d{4}(\d{4})/, '$1****$2')}</div>
+                            <div>${booking.name || '未填写'}</div>
+                            <div style="color: #888; font-size: 12px;">${booking.phone || ''}</div>
                         </td>
-                        <td><span class="tag ${gpuClass}">${item.gpu || '未知'}${item.gpu_other ? '*' : ''}</span></td>
-                        <td>${urgencyTag}</td>
-                        <td><span style="font-size:12px; color:#666;">${item.user_ip || '-'}</span></td>
-                        <td><button class="action-btn" onclick="viewDetail('${item.id}')">查看</button></td>
+                        <td>${gpuText}</td>
+                        <td class="${urgencyClass}">${urgencyText}</td>
+                        <td>${booking.wait_time || '-'}</td>
+                        <td>${booking.user_ip || '-'}</td>
+                        <td>
+                            <button class="btn btn-view" onclick="viewDetail('${booking.id}')">查看</button>
+                        </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        function updateStats() {
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('stat-total').innerText = allData.length;
-            document.getElementById('stat-today').innerText = allData.filter(d => d.created_at?.startsWith(today)).length;
-            document.getElementById('stat-5090').innerText = allData.filter(d => d.gpu === 'RTX5090').length;
-            document.getElementById('stat-urgent').innerText = allData.filter(d => d.wait_time === 'immediate').length;
-        }
-
-        function filterData(type) {
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            let filtered = allData;
-            if (type === 'urgent') filtered = allData.filter(d => d.wait_time === 'immediate');
-            else if (type !== 'all') filtered = allData.filter(d => d.gpu === type);
-            
-            renderTable(filtered);
-        }
-
-        function searchTable(keyword) {
-            if (!keyword) { renderTable(allData); return; }
-            const filtered = allData.filter(d => 
-                (d.name || '').includes(keyword) || 
-                (d.phone || '').includes(keyword)
-            );
-            renderTable(filtered);
-        }
-
+        // 查看详情
         function viewDetail(id) {
-            const item = allData.find(d => d.id === id);
-            if (!item) return;
-            
-            alert(`客户详情：
-姓名：${item.name}
-电话：${item.phone}
-邮箱：${item.email || '无'}
-显卡：${item.gpu} ${item.gpu_other || ''}
-等待时间：${item.wait_time}
-备注：${item.remark || '无'}
-IP：${item.user_ip || '-'}`);
+            alert('查看详情功能 - ID: ' + id);
         }
 
-        function exportData() {
-            const headers = ['提交时间', '姓名', '手机号', '邮箱', '显卡型号', '其他型号', '等待时间', '备注', 'IP地址'];
-            const rows = allData.map(item => [
-                item.created_at, item.name || '', item.phone || '', item.email || '',
-                item.gpu || '', item.gpu_other || '', item.wait_time || '', item.remark || '', item.user_ip || ''
-            ]);
-            const csv = [headers.join(','), ...rows.map(r => r.map(v => `"${v}"`).join(','))].join('\n');
-            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `显卡预订数据_${new Date().toLocaleDateString()}.csv`;
-            link.click();
-        }
+        // 页面加载时自动获取数据
+        window.addEventListener('load', loadData);
     </script>
 </body>
 </html>
