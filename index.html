@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>显卡预订登记 - 灵犀智算</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/dist/umd/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -52,11 +52,6 @@
             margin-bottom: 24px; 
             border: 1px solid rgba(255,255,255,0.06);
             box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-            animation: slideUp 0.5s ease;
-        }
-        @keyframes slideUp { 
-            from { opacity: 0; transform: translateY(20px); } 
-            to { opacity: 1; transform: translateY(0); } 
         }
         
         .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
@@ -78,9 +73,8 @@
             transition: all 0.3s ease; 
             border: 2px solid transparent;
             position: relative;
-            overflow: hidden;
         }
-        .option:hover { border-color: rgba(0, 212, 170, 0.3); transform: translateX(4px); }
+        .option:hover { border-color: rgba(0, 212, 170, 0.3); }
         .option.selected { 
             border-color: #00d4aa; 
             background: rgba(0, 212, 170, 0.08);
@@ -110,20 +104,13 @@
             background: rgba(37, 37, 37, 0.6); 
             border: 1px solid rgba(255,255,255,0.1); 
             border-radius: 10px; color: #fff; font-size: 15px;
-            transition: all 0.3s;
         }
         .input-group input:focus, .input-group textarea:focus { 
             outline: none; border-color: #00d4aa; 
-            background: rgba(37, 37, 37, 0.8);
-            box-shadow: 0 0 0 3px rgba(0, 212, 170, 0.1);
         }
         
         .other-input { margin-top: 12px; display: none; }
-        .other-input.show { display: block; animation: slideDown 0.3s ease; }
-        @keyframes slideDown { 
-            from { opacity: 0; max-height: 0; } 
-            to { opacity: 1; max-height: 100px; } 
-        }
+        .other-input.show { display: block; }
         
         .submit-btn { 
             width: 100%; padding: 18px; 
@@ -132,7 +119,6 @@
             font-size: 16px; font-weight: 700; cursor: pointer; 
             transition: all 0.3s;
             box-shadow: 0 4px 20px rgba(0, 212, 170, 0.3);
-            position: relative; overflow: hidden;
         }
         .submit-btn:hover { 
             transform: translateY(-2px); 
@@ -140,16 +126,20 @@
         }
         .submit-btn:disabled { 
             background: #333; color: #666; cursor: not-allowed;
-            box-shadow: none; transform: none;
+            box-shadow: none;
         }
-        .submit-btn.loading { color: transparent; }
+        .submit-btn.loading { 
+            color: transparent; 
+            position: relative;
+        }
         .submit-btn.loading::after {
-            content: ''; position: absolute; width: 20px; height: 20px;
-            top: 50%; left: 50%; margin: -10px 0 0 -10px;
-            border: 2px solid transparent; border-top-color: #000;
-            border-radius: 50%; animation: spin 0.8s linear infinite;
+            content: '提交中...'; 
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: #000;
+            font-size: 14px;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
         
         .security-badge { 
             display: flex; align-items: center; justify-content: center;
@@ -162,8 +152,7 @@
             background: rgba(0, 212, 170, 0.95); color: #000; 
             padding: 14px 28px; border-radius: 10px; 
             font-weight: 600; font-size: 14px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transition: transform 0.3s;
             z-index: 1000;
         }
         .toast.show { transform: translateX(-50%) translateY(0); }
@@ -171,31 +160,16 @@
         
         .success-screen { 
             display: none; text-align: center; padding: 60px 20px;
-            animation: fadeIn 0.6s ease;
         }
         .success-screen.show { display: block; }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: scale(0.9); } 
-            to { opacity: 1; transform: scale(1); } 
-        }
         .success-icon { 
             width: 80px; height: 80px; 
             background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
             border-radius: 50%; display: flex; align-items: center; justify-content: center;
             margin: 0 auto 24px; font-size: 40px; 
-            box-shadow: 0 8px 32px rgba(0, 212, 170, 0.4);
         }
         .success-screen h2 { font-size: 24px; margin-bottom: 12px; color: #fff; }
         .success-screen p { color: #888; font-size: 15px; line-height: 1.8; }
-        
-        /* 调试信息 */
-        .debug-info {
-            position: fixed; bottom: 10px; left: 10px;
-            background: rgba(0,0,0,0.8); color: #00d4aa;
-            padding: 10px; border-radius: 6px; font-size: 11px;
-            max-width: 300px; word-break: break-all;
-            display: none;
-        }
     </style>
 </head>
 <body>
@@ -218,41 +192,37 @@
             </div>
             <div class="section-desc">选择您需要的显卡型号，我们会根据库存情况优先通知</div>
             <div class="option-group" id="gpu-options">
-                <label class="option" data-value="RTX5090">
-                    <input type="radio" name="gpu" value="RTX5090">
+                <div class="option" data-value="RTX5090" onclick="selectGPU(this)">
                     <div class="option-content">
                         <div class="option-label">NVIDIA RTX 5090</div>
                         <div class="option-desc">旗舰级性能，适合AI训练与4K游戏</div>
                     </div>
                     <span class="option-price">旗舰</span>
-                </label>
-                <label class="option" data-value="RTX4090">
-                    <input type="radio" name="gpu" value="RTX4090">
+                </div>
+                <div class="option" data-value="RTX4090" onclick="selectGPU(this)">
                     <div class="option-content">
                         <div class="option-label">NVIDIA RTX 4090</div>
                         <div class="option-desc">高端性能，性价比之选</div>
                     </div>
                     <span class="option-price">高端</span>
-                </label>
-                <label class="option" data-value="RTX3090">
-                    <input type="radio" name="gpu" value="RTX3090">
+                </div>
+                <div class="option" data-value="RTX3090" onclick="selectGPU(this)">
                     <div class="option-content">
                         <div class="option-label">NVIDIA RTX 3090</div>
                         <div class="option-desc">经典型号，大显存适合渲染</div>
                     </div>
                     <span class="option-price">性价比</span>
-                </label>
-                <label class="option" data-value="other">
-                    <input type="radio" name="gpu" value="other">
+                </div>
+                <div class="option" data-value="other" onclick="selectGPU(this)">
                     <div class="option-content">
                         <div class="option-label">其他型号</div>
                         <div class="option-desc">AMD显卡或其他特殊需求</div>
                     </div>
-                </label>
+                </div>
             </div>
             <div class="other-input" id="other-gpu-box">
                 <div class="input-group">
-                    <input type="text" id="gpu-other" placeholder="请输入具体显卡型号">
+                    <input type="text" id="gpu-other" placeholder="请输入具体显卡型号" oninput="updateForm('gpuOther', this.value)">
                 </div>
             </div>
         </div>
@@ -265,27 +235,24 @@
             </div>
             <div class="section-desc">告诉我们您的紧急程度，便于我们安排优先级</div>
             <div class="option-group" id="wait-options">
-                <label class="option" data-value="immediate">
-                    <input type="radio" name="wait" value="immediate">
+                <div class="option" data-value="immediate" onclick="selectWait(this)">
                     <div class="option-content">
                         <div class="option-label">🚨 立即需要</div>
                         <div class="option-desc">一周内急需，越快越好</div>
                     </div>
-                </label>
-                <label class="option" data-value="15days">
-                    <input type="radio" name="wait" value="15days">
+                </div>
+                <div class="option" data-value="15days" onclick="selectWait(this)">
                     <div class="option-content">
                         <div class="option-label">📅 15天之内</div>
                         <div class="option-desc">近期有明确需求</div>
                     </div>
-                </label>
-                <label class="option" data-value="1month">
-                    <input type="radio" name="wait" value="1month">
+                </div>
+                <div class="option" data-value="1month" onclick="selectWait(this)">
                     <div class="option-content">
                         <div class="option-label">🕐 一个月内</div>
                         <div class="option-desc">可以等待，价格合适即可</div>
                     </div>
-                </label>
+                </div>
             </div>
         </div>
 
@@ -298,23 +265,23 @@
             <div class="section-desc">到货后我们会通过这些方式第一时间通知您</div>
             <div class="input-group">
                 <label>姓名 *</label>
-                <input type="text" id="name" placeholder="请输入您的真实姓名" maxlength="20">
+                <input type="text" id="name" placeholder="请输入您的真实姓名" maxlength="20" oninput="updateForm('name', this.value)">
             </div>
             <div class="input-group">
                 <label>手机号码 *</label>
-                <input type="tel" id="phone" placeholder="请输入11位手机号" maxlength="11">
+                <input type="tel" id="phone" placeholder="请输入11位手机号" maxlength="11" oninput="updateForm('phone', this.value)">
             </div>
             <div class="input-group">
                 <label>电子邮箱（选填）</label>
-                <input type="email" id="email" placeholder="用于接收到货通知邮件">
+                <input type="email" id="email" placeholder="用于接收到货通知邮件" oninput="updateForm('email', this.value)">
             </div>
             <div class="input-group">
                 <label>备注需求（选填）</label>
-                <textarea id="remark" rows="3" placeholder="如：需要公版/非公版、预算范围、批量采购数量等"></textarea>
+                <textarea id="remark" rows="3" placeholder="如：需要公版/非公版、预算范围、批量采购数量等" oninput="updateForm('remark', this.value)"></textarea>
             </div>
         </div>
 
-        <button class="submit-btn" id="submit-btn" onclick="submitForm()">提交预订申请</button>
+        <button class="submit-btn" id="submit-btn" onclick="submitForm()" disabled>提交预订申请</button>
         
         <div class="security-badge">
             <span>🔒 数据安全加密保护 · 仅用于到货通知</span>
@@ -329,161 +296,141 @@
     </div>
 
     <div class="toast" id="toast"></div>
-    
-    <!-- 调试信息显示 -->
-    <div class="debug-info" id="debug-info"></div>
 
     <script>
-        // ==================== 配置区：替换这里！ ====================
-        const SUPABASE_URL = 'https://ydyzjrkvmfpuqbsgbmxy.supabase.co
-';  // ← 替换
-        const SUPABASE_KEY = 'ydyzjrkvmfpuqbsgbmxy';  // ← 替换
-        
-        // 调试模式（部署成功后设为 false）
-        const DEBUG = true;
+        // ==================== 配置：替换为你的 Supabase 信息 ====================
+        const SUPABASE_URL = 'https://https://ydyzjrkvmfpuqbsgbmxy.supabase.co';
+        const SUPABASE_KEY = 'ydyzjrkvmfpuqbsgbmxy';
         
         // 初始化 Supabase
         let supabase;
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            if (DEBUG) showDebug('Supabase 初始化成功');
+            console.log('✅ Supabase 初始化成功');
         } catch (err) {
-            showDebug('Supabase 初始化失败: ' + err.message);
+            console.error('❌ Supabase 初始化失败:', err);
+            alert('系统初始化失败，请刷新页面重试');
         }
 
-        const state = {
-            formData: { gpu: '', gpuOther: '', waitTime: '', name: '', phone: '', email: '', remark: '' },
-            userIP: ''
+        // 表单状态
+        const formData = {
+            gpu: '',
+            gpuOther: '',
+            waitTime: '',
+            name: '',
+            phone: '',
+            email: '',
+            remark: ''
         };
 
-        function showDebug(msg) {
-            if (!DEBUG) return;
-            const el = document.getElementById('debug-info');
-            el.style.display = 'block';
-            el.innerHTML += '<div>' + new Date().toLocaleTimeString() + ' - ' + msg + '</div>';
-            console.log('[DEBUG]', msg);
-        }
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            showDebug('页面加载完成');
-            
-            // 获取IP
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                state.userIP = data.ip;
-                showDebug('IP获取成功: ' + state.userIP);
-            } catch (err) {
-                state.userIP = 'unknown';
-                showDebug('IP获取失败: ' + err.message);
-            }
-            
-            bindEvents();
+        // 选择显卡
+        function selectGPU(element) {
+            // 移除其他选中状态
+            document.querySelectorAll('#gpu-options .option').forEach(el => el.classList.remove('selected'));
+            // 添加当前选中
+            element.classList.add('selected');
+            // 保存数据
+            formData.gpu = element.dataset.value;
+            // 显示/隐藏其他输入框
+            const isOther = formData.gpu === 'other';
+            document.getElementById('other-gpu-box').classList.toggle('show', isOther);
             updateProgress();
-        });
-
-        function bindEvents() {
-            // 显卡选择
-            document.querySelectorAll('#gpu-options .option').forEach(opt => {
-                opt.addEventListener('click', () => {
-                    document.querySelectorAll('#gpu-options .option').forEach(o => o.classList.remove('selected'));
-                    opt.classList.add('selected');
-                    opt.querySelector('input').checked = true;
-                    const isOther = opt.dataset.value === 'other';
-                    document.getElementById('other-gpu-box').classList.toggle('show', isOther);
-                    state.formData.gpu = opt.dataset.value;
-                    updateProgress();
-                    showDebug('选择显卡: ' + opt.dataset.value);
-                });
-            });
-
-            // 等待时间选择
-            document.querySelectorAll('#wait-options .option').forEach(opt => {
-                opt.addEventListener('click', () => {
-                    document.querySelectorAll('#wait-options .option').forEach(o => o.classList.remove('selected'));
-                    opt.classList.add('selected');
-                    opt.querySelector('input').checked = true;
-                    state.formData.waitTime = opt.dataset.value;
-                    updateProgress();
-                    showDebug('选择等待时间: ' + opt.dataset.value);
-                });
-            });
-
-            // 输入监听
-            ['gpu-other', 'name', 'phone', 'email', 'remark'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) {
-                    el.addEventListener('input', () => {
-                        const key = id === 'gpu-other' ? 'gpuOther' : id;
-                        state.formData[key] = el.value;
-                        updateProgress();
-                    });
-                }
-            });
+            console.log('选择显卡:', formData.gpu);
         }
 
+        // 选择等待时间
+        function selectWait(element) {
+            document.querySelectorAll('#wait-options .option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            formData.waitTime = element.dataset.value;
+            updateProgress();
+            console.log('选择等待时间:', formData.waitTime);
+        }
+
+        // 更新表单字段
+        function updateForm(field, value) {
+            formData[field] = value;
+            updateProgress();
+        }
+
+        // 更新进度条和提交按钮
         function updateProgress() {
             let filled = 0;
-            if (state.formData.gpu) filled++;
-            if (state.formData.waitTime) filled++;
-            if (state.formData.name && state.formData.phone) filled++;
+            if (formData.gpu) filled++;
+            if (formData.waitTime) filled++;
+            if (formData.name && formData.phone.length === 11) filled++;
+            
             document.getElementById('progress').style.width = (filled / 3 * 100) + '%';
             
-            const isValid = state.formData.gpu && state.formData.waitTime && 
-                           state.formData.name.length >= 2 && 
-                           state.formData.phone.length === 11;
+            const isValid = formData.gpu && formData.waitTime && 
+                           formData.name.length >= 2 && 
+                           formData.phone.length === 11;
+            
             document.getElementById('submit-btn').disabled = !isValid;
         }
 
+        // 提交表单
         async function submitForm() {
-            showDebug('开始提交...');
             const btn = document.getElementById('submit-btn');
             btn.classList.add('loading');
             btn.disabled = true;
 
-            // 构造数据
-            const submitData = {
-                gpu: state.formData.gpu,
-                gpu_other: state.formData.gpuOther || null,
-                wait_time: state.formData.waitTime,
-                name: state.formData.name,
-                phone: state.formData.phone,
-                email: state.formData.email || null,
-                remark: state.formData.remark || null,
-                user_ip: state.userIP,
-                device_id: 'WEB_' + Math.random().toString(36).substr(2, 9),
-                user_agent: navigator.userAgent.substring(0, 200)
-            };
-            
-            showDebug('准备发送数据: ' + JSON.stringify(submitData));
+            console.log('开始提交数据:', formData);
 
             try {
-                showDebug('调用 Supabase insert...');
-                
+                // 构造提交数据
+                const submitData = {
+                    gpu: formData.gpu,
+                    gpu_other: formData.gpuOther || null,
+                    wait_time: formData.waitTime,
+                    name: formData.name,
+                    phone: formData.phone,
+                    email: formData.email || null,
+                    remark: formData.remark || null,
+                    user_ip: await getIP(),
+                    device_id: 'WEB_' + Date.now(),
+                    user_agent: navigator.userAgent.substring(0, 200)
+                };
+
+                console.log('发送到 Supabase:', submitData);
+
+                // 提交到 Supabase
                 const { data, error } = await supabase
-                    .from('bookings')
+                    .from('booking')
                     .insert([submitData])
                     .select();
 
                 if (error) {
-                    showDebug('Supabase 返回错误: ' + JSON.stringify(error));
+                    console.error('Supabase 错误:', error);
                     throw error;
                 }
 
-                showDebug('提交成功! 返回数据: ' + JSON.stringify(data));
+                console.log('✅ 提交成功:', data);
                 
-                // 显示成功
+                // 显示成功页面
                 document.getElementById('main-container').style.display = 'none';
                 document.getElementById('success-screen').classList.add('show');
 
             } catch (err) {
-                showDebug('提交异常: ' + err.message);
+                console.error('❌ 提交失败:', err);
                 showToast('提交失败: ' + err.message, 'error');
                 btn.classList.remove('loading');
                 btn.disabled = false;
             }
         }
 
+        // 获取 IP
+        async function getIP() {
+            try {
+                const res = await fetch('https://api.ipify.org?format=json');
+                const data = await res.json();
+                return data.ip;
+            } catch {
+                return 'unknown';
+            }
+        }
+
+        // 显示提示
         function showToast(msg, type) {
             const toast = document.getElementById('toast');
             toast.innerText = msg;
